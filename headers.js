@@ -1,6 +1,5 @@
-// @name         Favro - Toggl Timer
 // @namespace    https://www.gotom.io/
-// @version      1.0
+// @version      1.1
 // @license      MIT
 // @author       Mike Meier
 // @match        https://favro.com/*

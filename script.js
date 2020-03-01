@@ -3,6 +3,7 @@
     const FAVRO_API_KEY_NAME = 'favro_api_key';
     const FAVRO_TICKET_PREFIX_KEY_NAME = 'favro_ticket_prefix';
     const FAVRO_ORGANIZATION_ID_KEY_NAME = 'favro_organization_id';
+    const FAVRO_COLUMNS_TO_TRACK = 'favro_columns_to_track';
     const FAVRO_PID_CUSTOM_FIELD_ID_KEY_NAME = 'favro_pid_custom_field_id';
     const FAVRO_API_BASE_URL = 'https://favro.com/api/v1';
 
@@ -18,6 +19,7 @@
         FAVRO_TICKET_PREFIX_KEY_NAME,
         FAVRO_ORGANIZATION_ID_KEY_NAME,
         FAVRO_PID_CUSTOM_FIELD_ID_KEY_NAME,
+        FAVRO_COLUMNS_TO_TRACK,
 
         TOGGL_API_KEY_NAME,
         TOGGL_DEFAULT_PID_KEY_NAME
@@ -137,14 +139,12 @@
 
     function onOpenCardChange($) {
         return async (oldCard, newCard) => {
-            if (!newCard) {
-                await stopTimeEntry();
-                return;
-            }
+            await stopTimeEntry();
             const sequentialId = await GM.getValue(FAVRO_TICKET_PREFIX_KEY_NAME) + newCard;
             const favroToken = await GM.getValue(FAVRO_API_KEY_NAME);
             const email = await GM.getValue(FAVRO_EMAIL_KEY_NAME);
             const organizationId = await GM.getValue(FAVRO_ORGANIZATION_ID_KEY_NAME);
+            const columnsToTrack = (await GM.getValue(FAVRO_COLUMNS_TO_TRACK, '')).split(',');
             $.ajax({
                 type: 'GET',
                 url: FAVRO_API_BASE_URL + '/cards?cardSequentialId=' + sequentialId,
@@ -155,7 +155,9 @@
                         console.error('No card found in favro for sequentialId' + sequentialId);
                         return;
                     }
-                    startTimeEntry(card);
+                    if (columnsToTrack.length === 0 || columnsToTrack.indexOf(card.columnId) !== -1) {
+                        startTimeEntry(card);
+                    }
                 }
             });
         };
