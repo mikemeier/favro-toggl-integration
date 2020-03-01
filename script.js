@@ -140,6 +140,9 @@
     function onOpenCardChange($) {
         return async (oldCard, newCard) => {
             await stopTimeEntry();
+            if (!newCard) {
+                return;
+            }
             const sequentialId = await GM.getValue(FAVRO_TICKET_PREFIX_KEY_NAME) + newCard;
             const favroToken = await GM.getValue(FAVRO_API_KEY_NAME);
             const email = await GM.getValue(FAVRO_EMAIL_KEY_NAME);

@@ -1,5 +1,5 @@
 // @namespace    https://www.gotom.io/
-// @version      1.2
+// @version      1.3
 // @license      MIT
 // @author       Mike Meier
 // @match        https://favro.com/*
