@@ -4,9 +4,13 @@
     const FAVRO_TICKET_PREFIX_KEY_NAME = 'favro_ticket_prefix';
     const FAVRO_ORGANIZATION_ID_KEY_NAME = 'favro_organization_id';
     const FAVRO_PID_CUSTOM_FIELD_ID_KEY_NAME = 'favro_pid_custom_field_id';
+    const FAVRO_API_BASE_URL = 'https://favro.com/api/v1';
 
     const TOGGL_API_KEY_NAME = 'toggl_api_key';
     const TOGGL_DEFAULT_PID_KEY_NAME = 'toggl_default_pid';
+    const TOGGL_API_BASE_URL = 'https://www.toggl.com/api/v8';
+
+    const TICKET_NAME_SUFFIX = ' (Auto-Toggl)';
 
     const ENV_VALUES = [
         FAVRO_EMAIL_KEY_NAME,
@@ -84,7 +88,7 @@
         stopTimeEntry();
 
         timeEntryTimoutId = window.setTimeout(async () => {
-            const description = await GM.getValue(FAVRO_TICKET_PREFIX_KEY_NAME) + card.sequentialId + ' / ' + card.name + ' (Auto-Toggl)';
+            const description = await GM.getValue(FAVRO_TICKET_PREFIX_KEY_NAME) + card.sequentialId + ' / ' + card.name + TICKET_NAME_SUFFIX;
             const togglToken = await GM.getValue(TOGGL_API_KEY_NAME);
             const pidCustomFieldId = await GM.getValue(FAVRO_PID_CUSTOM_FIELD_ID_KEY_NAME);
             let pid = getTogglPid(card.customFields, pidCustomFieldId);
@@ -94,7 +98,7 @@
             const data = JSON.stringify({time_entry: {pid: pid, description: description, created_with: 'tampermonkey'}});
             GM.xmlHttpRequest({
                 method: 'POST',
-                url: 'https://www.toggl.com/api/v8/time_entries/start',
+                url: TOGGL_API_BASE_URL + '/time_entries/start',
                 data: data,
                 headers: getTogglHeaders(togglToken),
                 onload: (res) => {
@@ -126,7 +130,7 @@
         const togglToken = await GM.getValue(TOGGL_API_KEY_NAME);
         GM.xmlHttpRequest({
             method: 'PUT',
-            url: 'https://www.toggl.com/api/v8/time_entries/' + currentTimeEntryId + '/stop',
+            url: TOGGL_API_BASE_URL + '/time_entries/' + currentTimeEntryId + '/stop',
             headers: getTogglHeaders(togglToken),
         });
     }
@@ -143,7 +147,7 @@
             const organizationId = await GM.getValue(FAVRO_ORGANIZATION_ID_KEY_NAME);
             $.ajax({
                 type: 'GET',
-                url: 'https://favro.com/api/v1/cards?cardSequentialId=' + sequentialId,
+                url: FAVRO_API_BASE_URL + '/cards?cardSequentialId=' + sequentialId,
                 beforeSend: beforeSendFavro(favroToken, email, organizationId),
                 success: (res) => {
                     const card = res.entities[0];
