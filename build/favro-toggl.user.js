@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Favro - Toggl Timer
 // @namespace    https://www.gotom.io/
-// @version      1.1
+// @version      1.2
 // @license      MIT
 // @author       Mike Meier
 // @match        https://favro.com/*

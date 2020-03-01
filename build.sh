@@ -1,6 +1,7 @@
 dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 publicTarget=$dir/build/favro-toggl.user.js
 localTarget=$dir/build/favro-toggl.local.user.js
+readmeTarget=$dir/build/README.md
 
 echo '// ==UserScript==' > $publicTarget
 echo '// @name         Favro - Toggl Timer' >> $publicTarget
@@ -14,4 +15,5 @@ cat ./headers.js >> $localTarget
 echo "// @require      file://${dir}/script.js" >> $localTarget
 echo '// ==/UserScript==' >> $localTarget
 
-
+cat $dir/README.md > $readmeTarget
+cat $dir/storage.json >> $readmeTarget
