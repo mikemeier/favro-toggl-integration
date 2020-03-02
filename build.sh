@@ -38,3 +38,4 @@ rm $headersTmpFile
 
 git add .
 git commit -m $commitMessage
+git push
