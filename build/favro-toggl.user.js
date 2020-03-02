@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Favro - Toggl Timer
 // @namespace    https://www.gotom.io/
-// @version      1.3
+// @version      1.4.0
 // @license      MIT
 // @author       Mike Meier
 // @match        https://favro.com/*
@@ -9,8 +9,10 @@
 // @grant        GM.xmlHttpRequest
 // @grant        GM.setValue
 // @grant        GM.getValue
+// @grant        GM.notification
 // @require      http://code.jquery.com/jquery-3.4.1.min.js
 // ==/UserScript==
+/* jshint esversion: 6 */
 (function ($) {
     const FAVRO_EMAIL_KEY_NAME = 'favro_email';
     const FAVRO_API_KEY_NAME = 'favro_api_key';
@@ -85,6 +87,10 @@
     }
 
     function getTogglPid(customFields, pidCustomFieldId) {
+        if (!customFields) {
+            return null;
+        }
+
         let pid = null;
         customFields.forEach(customField => {
             if (customField.customFieldId === pidCustomFieldId) {
@@ -168,12 +174,28 @@
                 success: (res) => {
                     const card = res.entities[0];
                     if (!card) {
-                        console.error('No card found in favro for sequentialId' + sequentialId);
+                        GM.notification({text: 'No card found in favro for sequentialId' + sequentialId});
                         return;
                     }
-                    if (columnsToTrack.length === 0 || columnsToTrack.indexOf(card.columnId) !== -1) {
-                        startTimeEntry(card);
+
+                    if (columnsToTrack.length !== 0) {
+                        let found = false;
+                        const selector = '.boardcolumn .carditem .card-title-text:contains(\'' + $.escapeSelector(card.name) + '\')';
+                        $(selector).parents('.boardcolumn').each((index, elem) => {
+                            const columnId = $(elem).attr('id');
+                            if (columnsToTrack.indexOf(columnId) !== -1) {
+                                return found = true;
+                            }
+                        });
+                        if (!found) {
+                            return;
+                        }
                     }
+
+                    startTimeEntry(card);
+                },
+                error: err => {
+                    GM.notification({text: 'Card sequentialId' + sequentialId + ' fetch error: ' + err});
                 }
             });
         };

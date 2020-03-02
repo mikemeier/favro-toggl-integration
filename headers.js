@@ -1,5 +1,5 @@
 // @namespace    https://www.gotom.io/
-// @version      1.3
+// @version      {{version}}
 // @license      MIT
 // @author       Mike Meier
 // @match        https://favro.com/*
@@ -7,4 +7,5 @@
 // @grant        GM.xmlHttpRequest
 // @grant        GM.setValue
 // @grant        GM.getValue
+// @grant        GM.notification
 // @require      http://code.jquery.com/jquery-3.4.1.min.js
