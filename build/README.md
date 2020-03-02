@@ -16,5 +16,5 @@ Optional configuration via storage:
   "favro_columns_to_track": "AAbbCCddEE,FFggHHiiJJ",
   "favro_pid_custom_field_id": "toggl_custom_field_id_for_different_pid",
   "toggl_api_key": "toggl_api_key",
-  "toggl_default_pid": "toggl_default_project_id"
+  "toggl_default_pid": 1234
 }
