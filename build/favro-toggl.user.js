@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Favro - Toggl Timer
 // @namespace    https://www.gotom.io/
-// @version      1.9.0
+// @version      1.10.0
 // @license      MIT
 // @author       Mike Meier
 // @match        https://favro.com/*
@@ -109,14 +109,20 @@
         stopTimeEntry();
 
         timeEntryTimoutId = window.setTimeout(async () => {
-            const description = await GM.getValue(FAVRO_TICKET_PREFIX_KEY_NAME) + card.sequentialId + ' / ' + card.name + TICKET_NAME_SUFFIX;
+            const ticketPrefix = await GM.getValue(FAVRO_TICKET_PREFIX_KEY_NAME);
+            const ticketName = ticketPrefix + card.sequentialId;
+            const description = ticketName + ' / ' + card.name + TICKET_NAME_SUFFIX;
             const togglToken = await GM.getValue(TOGGL_API_KEY_NAME);
             const pidCustomFieldId = await GM.getValue(FAVRO_PID_CUSTOM_FIELD_ID_KEY_NAME);
             let pid = getTogglPid(card.customFields, pidCustomFieldId);
             if (!pid) {
                 pid = await GM.getValue(TOGGL_DEFAULT_PID_KEY_NAME);
             }
-            const data = JSON.stringify({time_entry: {pid: pid, description: description, created_with: 'tampermonkey'}});
+            const data = JSON.stringify({
+                time_entry: {
+                    pid: pid, description: description, created_with: 'tampermonkey', tags: ['auto-toggl-' + ticketName]
+                }
+            });
             GM.xmlHttpRequest({
                 method: 'POST',
                 url: TOGGL_API_BASE_URL + '/time_entries/start',
