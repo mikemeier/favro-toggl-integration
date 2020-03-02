@@ -37,5 +37,5 @@ cat $dir/storage.json >>$readmeTarget
 rm $headersTmpFile
 
 git add .
-git commit -m $commitMessage
+git commit -m "$commitMessage"
 git push
