@@ -2,7 +2,7 @@
 
 commitMessage=$1
 if [ -z "$commitMessage" ]; then
-  echo usage: ./build.sh commitMessage
+  echo usage: ./build.sh "commit message"
   exit 1
 fi
 
