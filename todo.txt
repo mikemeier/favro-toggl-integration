@@ -1,1 +1,0 @@
-Toggl Timer überprüfen und Icon entfernen wenn ein anderes Ticket getrackt wird aus anderem Tab

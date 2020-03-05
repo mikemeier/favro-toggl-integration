@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Favro - Toggl Timer
 // @namespace    https://www.gotom.io/
-// @version      1.10.0
+// @version      1.12.0
 // @license      MIT
 // @author       Mike Meier
 // @match        https://favro.com/*
@@ -10,10 +10,53 @@
 // @grant        GM.setValue
 // @grant        GM.getValue
 // @grant        GM.notification
+// @grant        GM_addStyle
 // @require      http://code.jquery.com/jquery-3.4.1.min.js
+// @require      https://code.jquery.com/ui/1.12.1/jquery-ui.min.js
+// @resource     https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css
 // ==/UserScript==
 /* jshint esversion: 6 */
 (function ($) {
+    const style = `
+        .favro-toggl-controls {
+            position: absolute; 
+            top: 12px; 
+            left: 50%; 
+            color: red;
+            z-index:1000;
+            display: inline-block;
+            cursor: move;
+        }
+        
+        .favro-toggl-controls--content {
+            background-color: #f3f7fb;
+            box-shadow: 0 2px 8px 0 rgba(0,0,0,.04);
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #D3D3D3;
+        }
+        
+        .favro-toggl-controls--content .fa {
+            cursor: pointer;
+            margin: 2px;
+        }
+        
+        .favro-toggl-controls--divider {
+            padding-left: 10px;
+            margin-left: 6px;
+            border-left: 1px solid #D3D3D3;
+        }
+        
+        .favro-toggl-controls--recording {
+            animation: favro-toggl-pulse 1s cubic-bezier(.5, 0, 1, 1) infinite alternate;  
+        }
+        
+        @keyframes favro-toggl-pulse {
+          from { opacity: 1; }
+          to { opacity: 0; }
+        }
+    `;
+
     const FAVRO_EMAIL_KEY_NAME = 'favro_email';
     const FAVRO_API_KEY_NAME = 'favro_api_key';
     const FAVRO_TICKET_PREFIX_KEY_NAME = 'favro_ticket_prefix';
@@ -23,8 +66,16 @@
     const FAVRO_API_BASE_URL = 'https://favro.com/api/v1';
 
     const TOGGL_API_KEY_NAME = 'toggl_api_key';
-    const TOGGL_DEFAULT_PID_KEY_NAME = 'toggl_default_pid';
+    const TOGGL_WID_KEY_NAME = 'toggl_wid';
     const TOGGL_API_BASE_URL = 'https://www.toggl.com/api/v8';
+
+    const UI_POSITION_TOP_KEY_VALUE = 'ui_position_top';
+    const UI_POSITION_LEFT_KEY_VALUE = 'ui_position_left';
+
+    const APP_AUTO_TOGGL_KEY_NAME = 'app_auto_toggl';
+    const APP_WAIT_BEFORE_TRACKING_KEY_NAME_SECONDS = 'app_wait_before_tracking_seconds';
+
+    const APP_DEFAULT_WAIT_BEFORE_TRACKING = 5000;
 
     const TICKET_NAME_SUFFIX = ' (Auto-Toggl)';
 
@@ -37,16 +88,131 @@
         FAVRO_COLUMNS_TO_TRACK,
 
         TOGGL_API_KEY_NAME,
-        TOGGL_DEFAULT_PID_KEY_NAME
-    ];
+        TOGGL_WID_KEY_NAME,
 
-    const TIMEOUT_BEFORE_TRACKING = 5000;
+        APP_WAIT_BEFORE_TRACKING_KEY_NAME_SECONDS
+    ];
 
     function start() {
         $.noConflict();
         ensureEnvironmentVariables();
-        window.setInterval(detectOpenCardChanges(onOpenCardChange($)), 1000);
+        setupControlsContainer(setupCurrentTimeEntry);
+
+        window.setInterval(setupCurrentTimeEntry, 60000);
+        window.setInterval(detectOpenCardChanges(onOpenCardChange()), 1000);
         window.onbeforeunload = stopTimeEntry;
+    }
+
+    async function setupCurrentTimeEntry() {
+        GM.xmlHttpRequest({
+            method: 'GET',
+            url: TOGGL_API_BASE_URL + '/time_entries/current',
+            headers: await getTogglHeaders(),
+            onload: (res) => {
+                setCurrentTimeEntry(JSON.parse(res.response).data);
+            }
+        });
+    }
+
+    let controlsContainer = null;
+
+    function setupControlsContainer(done) {
+        $(function () {
+            GM_addStyle(style);
+            const container = `
+                    <div id="favro-toggl-controls" class="favro-toggl-controls">
+                        <div class="favro-toggl-controls--content">
+                            <i class="fa fa-play-circle" data-favro-toggl-action="start"></i>
+                            <i class="fa fa-stop-circle" data-favro-toggl-action="stop"></i>
+                            <i class="fa fa-toggle-off favro-toggl-controls--divider" data-favro-toggl-action="toggl-auto"></i> Auto
+                            <i class="fa fa-circle" data-recording-button></i>
+                            <span data-recording-text></span>
+                        </div>
+                    </div>
+                `;
+            //favro-toggl-controls--recording
+            $('body').prepend(container);
+            controlsContainer = $('#favro-toggl-controls');
+            adjustControlsContainerPosition(controlsContainer);
+
+            controlsContainer.on('click', '[data-favro-toggl-action]', (e) => {
+                const target = $(e.target);
+                switch (target.data('favro-toggl-action')) {
+                    case 'start':
+                        if (currentOpenCardId) {
+                            startTimeEntry(currentOpenCardId, true);
+                        }
+                        break;
+                    case 'stop':
+                        stopTimeEntry();
+                        break;
+                    case 'toggl-auto':
+                        if (target.hasClass('fa-toggle-on')) {
+                            GM.setValue(APP_AUTO_TOGGL_KEY_NAME, false);
+                            target.removeClass('fa-toggle-on').addClass('fa-toggle-off');
+                            stopTimeEntry();
+                        } else {
+                            GM.setValue(APP_AUTO_TOGGL_KEY_NAME, true);
+                            target.removeClass('fa-toggle-off').addClass('fa-toggle-on');
+                            if (currentOpenCardId) {
+                                startTimeEntry(currentOpenCardId, true);
+                            }
+                        }
+                        break;
+                }
+            });
+            controlsContainer.draggable({
+                stop: () => {
+                    const pos = controlsContainer.position();
+                    GM.setValue(UI_POSITION_TOP_KEY_VALUE, pos.top);
+                    GM.setValue(UI_POSITION_LEFT_KEY_VALUE, pos.left);
+                }
+            });
+
+            done();
+        });
+    }
+
+    async function adjustControlsContainerPosition(controlsContainer) {
+        const top = await GM.getValue(UI_POSITION_TOP_KEY_VALUE);
+        const left = await GM.getValue(UI_POSITION_LEFT_KEY_VALUE);
+        if (top > 0 && left > 0) {
+            controlsContainer.css('top', top + 'px');
+            controlsContainer.css('left', left + 'px');
+        }
+
+        if (await isAutoToggl()) {
+            controlsContainer.find('.fa-toggle-off').removeClass('fa-toggle-off').addClass('fa-toggle-on');
+        }
+    }
+
+    async function isAutoToggl() {
+        return await GM.getValue(APP_AUTO_TOGGL_KEY_NAME) === true;
+    }
+
+    let currentTimeEntry = null;
+
+    function setCurrentTimeEntry(newCurrentTimeEntry) {
+        if ((newCurrentTimeEntry === null && currentTimeEntry === null) || newCurrentTimeEntry && currentTimeEntry && newCurrentTimeEntry.id === currentTimeEntry.id) {
+            return;
+        }
+
+        currentTimeEntry = newCurrentTimeEntry;
+        if (currentTimeEntry) {
+            const description = currentTimeEntry.description.substr(0, 8).trim();
+            controlsContainer.find('[data-recording-text]').html(description);
+            controlsContainer.find('[data-recording-button]').addClass('favro-toggl-controls--recording');
+        } else {
+            controlsContainer.find('[data-recording-text]').html('');
+            controlsContainer.find('[data-recording-button]').removeClass('favro-toggl-controls--recording');
+        }
+    }
+
+    function updateControlsContainer() {
+        if (!controlsContainer) {
+            GM.notification({text: 'No controls available'});
+            return;
+        }
     }
 
     function ensureEnvironmentVariables() {
@@ -55,8 +221,9 @@
         });
     }
 
+    let currentOpenCardId = null;
+
     function detectOpenCardChanges(onChange) {
-        let currentOpenCardId = null;
         return async () => {
             const ticketPrefix = await GM.getValue(FAVRO_TICKET_PREFIX_KEY_NAME);
             const regex = new RegExp('\\?card=' + ticketPrefix + '([\\d]+)', 'i');
@@ -71,7 +238,11 @@
         }
     }
 
-    function beforeSendFavro(favroToken, email, organizationId) {
+    async function beforeSendFavro() {
+        const favroToken = await GM.getValue(FAVRO_API_KEY_NAME);
+        const email = await GM.getValue(FAVRO_EMAIL_KEY_NAME);
+        const organizationId = await GM.getValue(FAVRO_ORGANIZATION_ID_KEY_NAME);
+
         return (xhr) => {
             xhr.setRequestHeader('Authorization', 'Basic ' + btoa(email + ':' + favroToken));
             xhr.setRequestHeader('organizationId', organizationId);
@@ -79,7 +250,9 @@
         }
     }
 
-    function getTogglHeaders(togglToken) {
+    async function getTogglHeaders() {
+        const togglToken = await GM.getValue(TOGGL_API_KEY_NAME);
+
         return {
             'Authorization': 'Basic ' + btoa(togglToken + ':api_token'),
             'Content-Type': 'application/json'
@@ -102,109 +275,132 @@
         return pid;
     }
 
-    let timeEntryId = null;
-    let timeEntryTimoutId = null;
+    let currentTimeEntryTimoutId = null;
 
-    function startTimeEntry(card) {
-        stopTimeEntry();
+    async function startTimeEntryForCard(card, doDelay) {
+        const delay = doDelay ? await getTrackingWaitingTime() : 0;
 
-        timeEntryTimoutId = window.setTimeout(async () => {
+        currentTimeEntryTimoutId = window.setTimeout(async () => {
             const ticketPrefix = await GM.getValue(FAVRO_TICKET_PREFIX_KEY_NAME);
             const ticketName = ticketPrefix + card.sequentialId;
             const description = ticketName + ' / ' + card.name + TICKET_NAME_SUFFIX;
-            const togglToken = await GM.getValue(TOGGL_API_KEY_NAME);
             const pidCustomFieldId = await GM.getValue(FAVRO_PID_CUSTOM_FIELD_ID_KEY_NAME);
-            let pid = getTogglPid(card.customFields, pidCustomFieldId);
-            if (!pid) {
-                pid = await GM.getValue(TOGGL_DEFAULT_PID_KEY_NAME);
-            }
+            const wid = await GM.getValue(TOGGL_WID_KEY_NAME);
+            const pid = getTogglPid(card.customFields, pidCustomFieldId);
             const data = JSON.stringify({
                 time_entry: {
-                    pid: pid, description: description, created_with: 'tampermonkey', tags: ['auto-toggl-' + ticketName]
+                    wid: wid,
+                    pid: pid,
+                    description: description,
+                    created_with: 'tampermonkey favro-toggl-timer ' + GM_info.script.version,
                 }
             });
+
             GM.xmlHttpRequest({
                 method: 'POST',
                 url: TOGGL_API_BASE_URL + '/time_entries/start',
                 data: data,
-                headers: getTogglHeaders(togglToken),
+                headers: await getTogglHeaders(),
                 onload: (res) => {
-                    timeEntryId = JSON.parse(res.response).data.id;
-                    const togglButtonId = 'button_' + timeEntryId;
-                    const togglButton = $('<button id="' + togglButtonId + '" type="button" style="border:none;background:none;cursor:pointer;">' +
-                        '<img src="https://web-assets.toggl.com/app/assets/images/favicon.b87d0d2d.ico" style="width:20px;height:20px;"></button>');
-                    togglButton.click(() => {
-                        stopTimeEntry();
-                        $('#' + togglButtonId).remove();
-                    });
-                    $('#' + card.cardId + '.cardeditor').find('.cardeditor-topbar .buttons').append(togglButton);
+                    setCurrentTimeEntry(JSON.parse(res.response).data);
                 }
             });
-        }, TIMEOUT_BEFORE_TRACKING);
+        }, delay);
+    }
+
+    async function getTrackingWaitingTime() {
+        let waitingTime = parseInt(await GM.getValue(APP_WAIT_BEFORE_TRACKING_KEY_NAME_SECONDS));
+        if (waitingTime > 0) {
+            waitingTime = waitingTime * 1000;
+        } else {
+            waitingTime = 0;
+        }
+
+        if (waitingTime < 1000 || waitingTime > 300000) {
+            return APP_DEFAULT_WAIT_BEFORE_TRACKING;
+        }
+
+        return waitingTime;
     }
 
     async function stopTimeEntry() {
-        if (timeEntryTimoutId) {
-            window.clearTimeout(timeEntryTimoutId);
+        if (currentTimeEntryTimoutId) {
+            window.clearTimeout(currentTimeEntryTimoutId);
         }
 
-        if (!timeEntryId) {
+        if (!currentTimeEntry) {
             return;
         }
 
-        const currentTimeEntryId = timeEntryId;
-        timeEntryId = null;
-        const togglToken = await GM.getValue(TOGGL_API_KEY_NAME);
         GM.xmlHttpRequest({
             method: 'PUT',
-            url: TOGGL_API_BASE_URL + '/time_entries/' + currentTimeEntryId + '/stop',
-            headers: getTogglHeaders(togglToken),
+            url: TOGGL_API_BASE_URL + '/time_entries/' + currentTimeEntry.id + '/stop',
+            headers: await getTogglHeaders(),
+            onload: () => {
+                setCurrentTimeEntry(null);
+            }
         });
     }
 
-    function onOpenCardChange($) {
-        return async (oldCard, newCard) => {
-            await stopTimeEntry();
-            if (!newCard) {
+    function isCardInTrackableColumn(card, columnsToTrack) {
+        if (columnsToTrack.length === 0) {
+            return true;
+        }
+
+        if (card.columnId && columnsToTrack.indexOf(card.columnId) !== -1) {
+            return true;
+        }
+
+        let found = false;
+        const selector = '.boardcolumn .carditem .card-title-text:contains(\'' + $.escapeSelector(card.name) + '\')';
+        $(selector).parents('.boardcolumn').each((index, elem) => {
+            const columnId = $(elem).attr('id');
+            if (columnsToTrack.indexOf(columnId) !== -1) {
+                return found = true;
+            }
+        });
+
+        return found;
+    }
+
+    function onOpenCardChange() {
+        return async (oldCardId, newCardId) => {
+            if (!(await isAutoToggl())) {
                 return;
             }
-            const sequentialId = await GM.getValue(FAVRO_TICKET_PREFIX_KEY_NAME) + newCard;
-            const favroToken = await GM.getValue(FAVRO_API_KEY_NAME);
-            const email = await GM.getValue(FAVRO_EMAIL_KEY_NAME);
-            const organizationId = await GM.getValue(FAVRO_ORGANIZATION_ID_KEY_NAME);
-            const columnsToTrack = (await GM.getValue(FAVRO_COLUMNS_TO_TRACK, '')).split(',');
-            $.ajax({
-                type: 'GET',
-                url: FAVRO_API_BASE_URL + '/cards?cardSequentialId=' + sequentialId,
-                beforeSend: beforeSendFavro(favroToken, email, organizationId),
-                success: (res) => {
-                    const card = res.entities[0];
-                    if (!card) {
-                        GM.notification({text: 'No card found in favro for sequentialId' + sequentialId});
-                        return;
-                    }
 
-                    if (columnsToTrack.length !== 0) {
-                        let found = false;
-                        const selector = '.boardcolumn .carditem .card-title-text:contains(\'' + $.escapeSelector(card.name) + '\')';
-                        $(selector).parents('.boardcolumn').each((index, elem) => {
-                            const columnId = $(elem).attr('id');
-                            if (columnsToTrack.indexOf(columnId) !== -1) {
-                                return found = true;
-                            }
-                        });
-                        if (!found) {
-                            return;
-                        }
-                    }
-
-                    startTimeEntry(card);
-                },
-                error: err => {
-                    GM.notification({text: 'Card sequentialId' + sequentialId + ' fetch error: ' + err});
-                }
-            });
+            await stopTimeEntry();
+            if (newCardId) {
+                await startTimeEntry(newCardId, false);
+            }
         };
+    }
+
+    async function startTimeEntry(cardId, manualStarted) {
+        const sequentialId = await GM.getValue(FAVRO_TICKET_PREFIX_KEY_NAME) + cardId;
+        const columnsToTrack = manualStarted ? [] : (await GM.getValue(FAVRO_COLUMNS_TO_TRACK, '')).split(',');
+
+        $.ajax({
+            type: 'GET',
+            url: FAVRO_API_BASE_URL + '/cards?cardSequentialId=' + sequentialId,
+            beforeSend: await beforeSendFavro(),
+            success: (res) => {
+                const card = res.entities[0];
+                if (!card) {
+                    GM.notification({text: 'No card found in favro for sequentialId ' + sequentialId});
+                    return;
+                }
+
+                if (!isCardInTrackableColumn(card, columnsToTrack)) {
+                    return;
+                }
+
+                startTimeEntryForCard(card, !manualStarted);
+            },
+            error: err => {
+                GM.notification({text: 'Card sequentialId ' + sequentialId + ' fetch error: ' + err});
+            }
+        });
     }
 
     start();

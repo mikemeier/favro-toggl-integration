@@ -4,7 +4,7 @@
   "favro_ticket_prefix": "XXX-",
   "favro_organization_id": "favro_organization_id",
   "favro_columns_to_track": "AAbbCCddEE,FFggHHiiJJ",
-  "favro_pid_custom_field_id": "toggl_custom_field_id_for_different_pid",
+  "favro_pid_custom_field_id": "AAbbCCddEE",
   "toggl_api_key": "toggl_api_key",
-  "toggl_default_pid": 1234
+  "toggl_wid": 1234
 }
