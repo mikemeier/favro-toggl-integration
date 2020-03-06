@@ -202,7 +202,7 @@
 
     function ensureEnvironmentVariables() {
         ENV_VALUES.forEach(async key => {
-            await GM.getValue(key) || GM.setValue(key, prompt(key));
+            await GM.getValue(key, '__IS_NOT_SET') !== '__IS_NOT_SET' || GM.setValue(key, prompt(key));
         });
     }
 
