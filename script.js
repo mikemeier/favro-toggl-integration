@@ -44,8 +44,9 @@
     const FAVRO_API_KEY_NAME = 'favro_api_key';
     const FAVRO_TICKET_PREFIX_KEY_NAME = 'favro_ticket_prefix';
     const FAVRO_ORGANIZATION_ID_KEY_NAME = 'favro_organization_id';
-    const FAVRO_COLUMNS_TO_TRACK = 'favro_columns_to_track';
+    const FAVRO_COLUMNS_TO_TRACK_KEY_NAME = 'favro_columns_to_track';
     const FAVRO_PID_CUSTOM_FIELD_ID_KEY_NAME = 'favro_pid_custom_field_id';
+
     const FAVRO_API_BASE_URL = 'https://favro.com/api/v1';
 
     const TOGGL_API_KEY_NAME = 'toggl_api_key';
@@ -70,7 +71,7 @@
         FAVRO_TICKET_PREFIX_KEY_NAME,
         FAVRO_ORGANIZATION_ID_KEY_NAME,
         FAVRO_PID_CUSTOM_FIELD_ID_KEY_NAME,
-        FAVRO_COLUMNS_TO_TRACK,
+        FAVRO_COLUMNS_TO_TRACK_KEY_NAME,
 
         TOGGL_API_KEY_NAME,
         TOGGL_WID_KEY_NAME,
@@ -363,7 +364,11 @@
 
     async function startTimeEntry(cardId, manualStarted) {
         const sequentialId = await GM.getValue(FAVRO_TICKET_PREFIX_KEY_NAME) + cardId;
-        const columnsToTrack = manualStarted ? [] : (await GM.getValue(FAVRO_COLUMNS_TO_TRACK, '')).split(',');
+        let columnsToTrackEnv = await GM.getValue(FAVRO_COLUMNS_TO_TRACK_KEY_NAME);
+        if (typeof columnsToTrackEnv !== "string") {
+            columnsToTrackEnv = '';
+        }
+        const columnsToTrack = manualStarted ? [] : columnsToTrackEnv.split(',');
 
         $.ajax({
             type: 'GET',
