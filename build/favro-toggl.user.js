@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Favro - Toggl Timer
 // @namespace    https://www.gotom.io/
-// @version      1.15.0
+// @version      1.16.0
 // @license      MIT
 // @author       Mike Meier
 // @match        https://favro.com/*
@@ -382,10 +382,11 @@
     async function startTimeEntry(cardId, manualStarted) {
         const sequentialId = await GM.getValue(FAVRO_TICKET_PREFIX_KEY_NAME) + cardId;
         let columnsToTrackEnv = await GM.getValue(FAVRO_COLUMNS_TO_TRACK_KEY_NAME);
-        if (typeof columnsToTrackEnv !== "string") {
-            columnsToTrackEnv = '';
+
+        let columnsToTrack = [];
+        if (typeof columnsToTrackEnv === "string" && columnsToTrackEnv !== "") {
+            columnsToTrack = columnsToTrackEnv.split(',');
         }
-        const columnsToTrack = manualStarted ? [] : columnsToTrackEnv.split(',');
 
         $.ajax({
             type: 'GET',
