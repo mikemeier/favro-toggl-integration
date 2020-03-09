@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Favro - Toggl Timer
 // @namespace    https://www.gotom.io/
-// @version      1.16.0
+// @version      1.17.0
 // @license      MIT
 // @author       Mike Meier
 // @match        https://favro.com/*
@@ -78,7 +78,7 @@
 
     const APP_DEFAULT_WAIT_BEFORE_TRACKING = 5000;
     const APP_INTERVAL_FETCH_TOGGL_CURRENT_ENTRY = 15000;
-    const APP_INTERVAL_DETECT_OPEN_CARD_CHANGE = 1000;
+    const APP_INTERVAL_DETECT_OPEN_CARD_CHANGE = 5000;
 
     const TICKET_NAME_SUFFIX = ' (Auto-Toggl)';
 
