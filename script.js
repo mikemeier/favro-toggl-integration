@@ -364,10 +364,10 @@
 
     async function startTimeEntry(cardId, manualStarted) {
         const sequentialId = await GM.getValue(FAVRO_TICKET_PREFIX_KEY_NAME) + cardId;
-        let columnsToTrackEnv = await GM.getValue(FAVRO_COLUMNS_TO_TRACK_KEY_NAME);
+        const columnsToTrackEnv = await GM.getValue(FAVRO_COLUMNS_TO_TRACK_KEY_NAME);
 
         let columnsToTrack = [];
-        if (typeof columnsToTrackEnv === "string" && columnsToTrackEnv !== "") {
+        if (!manualStarted && typeof columnsToTrackEnv === "string" && columnsToTrackEnv !== "") {
             columnsToTrack = columnsToTrackEnv.split(',');
         }
 
