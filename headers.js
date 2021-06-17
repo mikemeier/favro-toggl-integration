@@ -3,7 +3,7 @@
 // @license      MIT
 // @author       Mike Meier
 // @match        https://favro.com/*
-// @match        https://www.toggl.com/api/*
+// @match        https://api.track.toggl.com/api/*
 // @grant        GM.xmlHttpRequest
 // @grant        GM.setValue
 // @grant        GM.getValue

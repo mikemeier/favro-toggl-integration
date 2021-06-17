@@ -51,7 +51,7 @@
 
     const TOGGL_API_KEY_NAME = 'toggl_api_key';
     const TOGGL_WID_KEY_NAME = 'toggl_wid';
-    const TOGGL_API_BASE_URL = 'https://www.toggl.com/api/v8';
+    const TOGGL_API_BASE_URL = 'https://api.track.toggl.com/api/v8';
 
     const UI_POSITION_TOP_KEY_VALUE = 'ui_position_top';
     const UI_POSITION_LEFT_KEY_VALUE = 'ui_position_left';
