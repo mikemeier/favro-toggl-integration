@@ -9,6 +9,16 @@ Installation
 
 Optional configuration via storage:
 {
+"favro_email": "favro_email@example.com",
+"favro_api_key": "your_favro_api_key",
+"favro_ticket_prefix": "XXX-",
+"favro_organization_id": "favro_organization_id",
+"favro_columns_to_track": "AAbbCCddEE,FFggHHiiJJ",
+"favro_pid_custom_field_id": "AAbbCCddEE",
+"toggl_api_key": "toggl_api_key",
+"toggl_wid": 1234
+}
+{
   "favro_email": "favro_email@example.com",
   "favro_api_key": "your_favro_api_key",
   "favro_ticket_prefix": "XXX-",

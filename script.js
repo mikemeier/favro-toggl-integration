@@ -51,7 +51,7 @@
 
     const TOGGL_API_KEY_NAME = 'toggl_api_key';
     const TOGGL_WID_KEY_NAME = 'toggl_wid';
-    const TOGGL_API_BASE_URL = 'https://api.track.toggl.com/api/v8';
+    const TOGGL_API_BASE_URL = 'https://api.track.toggl.com/api/v9';
 
     const UI_POSITION_TOP_KEY_VALUE = 'ui_position_top';
     const UI_POSITION_LEFT_KEY_VALUE = 'ui_position_left';
@@ -92,10 +92,10 @@
     async function setupCurrentTimeEntry() {
         GM.xmlHttpRequest({
             method: 'GET',
-            url: TOGGL_API_BASE_URL + '/time_entries/current',
+            url: TOGGL_API_BASE_URL + '/me/time_entries/current',
             headers: await getTogglHeaders(),
             onload: (res) => {
-                setCurrentTimeEntry(JSON.parse(res.response).data);
+                setCurrentTimeEntry(JSON.parse(res.response));
             }
         });
     }
@@ -271,24 +271,30 @@
             const ticketName = ticketPrefix + card.sequentialId;
             const description = ticketName + ' / ' + card.name + TICKET_NAME_SUFFIX;
             const pidCustomFieldId = await GM.getValue(FAVRO_PID_CUSTOM_FIELD_ID_KEY_NAME);
-            const wid = await GM.getValue(TOGGL_WID_KEY_NAME);
+            const wid = parseInt(await GM.getValue(TOGGL_WID_KEY_NAME), 10);
             const pid = getTogglPid(card.customFields, pidCustomFieldId);
             const data = JSON.stringify({
-                time_entry: {
-                    wid: wid,
-                    pid: pid,
-                    description: description,
-                    created_with: 'tampermonkey favro-toggl-timer ' + GM_info.script.version,
-                }
+                workspace_id: wid,
+                project_id: pid,
+                description: description,
+                start: new Date().toISOString(),
+                duration: -1,
+                created_with: 'tampermonkey favro-toggl-timer ' + GM_info.script.version,
             });
 
             GM.xmlHttpRequest({
                 method: 'POST',
-                url: TOGGL_API_BASE_URL + '/time_entries/start',
+                url: TOGGL_API_BASE_URL + '/workspaces/'+ wid +'/time_entries',
                 data: data,
                 headers: await getTogglHeaders(),
                 onload: (res) => {
-                    setCurrentTimeEntry(JSON.parse(res.response).data);
+                    setCurrentTimeEntry(JSON.parse(res.response));
+                },
+                onerror: (res) => {
+                    console.error(res);
+                },
+                onreadystatechange: (res) => {
+                    console.error(res);
                 }
             });
         }, delay);
@@ -318,9 +324,10 @@
             return;
         }
 
+        const wid = parseInt(await GM.getValue(TOGGL_WID_KEY_NAME), 10);
         GM.xmlHttpRequest({
-            method: 'PUT',
-            url: TOGGL_API_BASE_URL + '/time_entries/' + currentTimeEntry.id + '/stop',
+            method: 'PATCH',
+            url: TOGGL_API_BASE_URL + '/workspaces/'+ wid +'/time_entries/' + currentTimeEntry.id + '/stop',
             headers: await getTogglHeaders(),
             onload: () => {
                 setCurrentTimeEntry(null);
