@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Favro - Toggl Timer
 // @namespace    https://www.gotom.io/
-// @version      1.22.0
+// @version      1.23.0
 // @license      MIT
 // @author       Mike Meier
 // @match        https://favro.com/*
@@ -202,7 +202,7 @@
 
         currentTimeEntry = newCurrentTimeEntry;
         if (currentTimeEntry) {
-            const description = currentTimeEntry.description.substr(0, 8).trim();
+            const description = currentTimeEntry.description.substr(0, 20).trim();
             controlsContainer.find('[data-recording-text]').html(description);
             controlsContainer.find('[data-recording-button]').addClass('favro-toggl-controls--recording');
         } else {
